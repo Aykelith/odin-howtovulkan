@@ -1,0 +1,18 @@
+[submodule "external-libs/SDL"]
+	path = external-libs/SDL
+	url = git@github.com:libsdl-org/SDL.git
+[submodule "external-libs/vma"]
+	path = external-libs/vma
+	url = git@github.com:Capati/odin-vma.git
+[submodule "external-libs/tinyobj"]
+	path = external-libs/tinyobj
+	url = git@github.com:algo-boyz/tinyobj.git
+[submodule "external-libs/ktx_odin"]
+	path = external-libs/ktx_odin
+	url = git@github.com:nowhereware/ktx_odin.git
+[submodule "external-libs/KTX-Software"]
+	path = external-libs/KTX-Software
+	url = https://github.com/KhronosGroup/KTX-Software.git
+[submodule "external-libs/odin-slang"]
+	path = external-libs/odin-slang
+	url = git@github.com:DragosPopse/odin-slang.git
