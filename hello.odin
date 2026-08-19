@@ -61,8 +61,8 @@ main :: proc() {
 
     // Load Vulkan's *global* function pointers (vkCreateInstance, etc.)
     // via SDL's loader — without this, every vk.* call is a nil-pointer call.
-    get_instance_proc_addr := sdl.Vulkan_GetVkGetInstanceProcAddr()
-    vk.load_proc_addresses_global(rawptr(get_instance_proc_addr))
+    getInstanceProcAddr := sdl.Vulkan_GetVkGetInstanceProcAddr()
+    vk.load_proc_addresses_global(rawptr(getInstanceProcAddr))
 
     //=== Instance setup ======================================================
 
@@ -95,10 +95,10 @@ main :: proc() {
 
     //=== Device selection ====================================================
 
-    device_count: u32;
-    chk(vk.EnumeratePhysicalDevices(instance, &device_count, nil));
-    devices := make([]vk.PhysicalDevice, device_count);
-    chk(vk.EnumeratePhysicalDevices(instance, &device_count, raw_data(devices)));
+    deviceCount: u32;
+    chk(vk.EnumeratePhysicalDevices(instance, &deviceCount, nil));
+    devices := make([]vk.PhysicalDevice, deviceCount);
+    chk(vk.EnumeratePhysicalDevices(instance, &deviceCount, raw_data(devices)));
 
     device_index: u32 = 0;
 
@@ -114,17 +114,17 @@ main :: proc() {
 
     queueFamilyCount: u32;
     vk.GetPhysicalDeviceQueueFamilyProperties(devices[device_index], &queueFamilyCount, nil);
-    queue_families := make([]vk.QueueFamilyProperties, queueFamilyCount);
-    vk.GetPhysicalDeviceQueueFamilyProperties(devices[device_index], &queueFamilyCount, raw_data(queue_families));
-    queue_family: u32 = 0;
-    for i := 0; i < len(queue_families); i += 1 {
-        if vk.QueueFlag.GRAPHICS in queue_families[i].queueFlags {
-            queue_family = cast(u32)i;
+    queueFamilies := make([]vk.QueueFamilyProperties, queueFamilyCount);
+    vk.GetPhysicalDeviceQueueFamilyProperties(devices[device_index], &queueFamilyCount, raw_data(queueFamilies));
+    queueFamily: u32 = 0;
+    for i := 0; i < len(queueFamilies); i += 1 {
+        if vk.QueueFlag.GRAPHICS in queueFamilies[i].queueFlags {
+            queueFamily = cast(u32)i;
             break;
         }
     }
 
-    if !sdl.Vulkan_GetPresentationSupport(instance, devices[device_index], queue_family) {
+    if !sdl.Vulkan_GetPresentationSupport(instance, devices[device_index], queueFamily) {
         fmt.eprintln("Selected queue family does not support presentation");
         os.exit(1);
     }
@@ -133,7 +133,7 @@ main :: proc() {
     qfpriorities[0] = 1.0;
     queueCI := vk.DeviceQueueCreateInfo {
         sType = .DEVICE_QUEUE_CREATE_INFO,
-        queueFamilyIndex = queue_family,
+        queueFamilyIndex = queueFamily,
         queueCount = 1,
         pQueuePriorities = raw_data(qfpriorities),
     };
@@ -203,9 +203,9 @@ main :: proc() {
 
     //=== Window and surface ==================================================
 
-    window_size_x := 1280;
-    window_size_y := 720;
-    window := sdl.CreateWindow("How to Vulkan", cast(i32)window_size_x, cast(i32)window_size_y, sdl.WINDOW_VULKAN + sdl.WINDOW_RESIZABLE);
+    windowSizeX := 1280;
+    windowSizeY := 720;
+    window := sdl.CreateWindow("How to Vulkan", cast(i32)windowSizeX, cast(i32)windowSizeY, sdl.WINDOW_VULKAN + sdl.WINDOW_RESIZABLE);
     if window == nil {
         fmt.eprintln("CreateWindow failed:", sdl.GetError())
         os.exit(1);
@@ -230,7 +230,7 @@ main :: proc() {
 
     // Wayland handling
     if surfaceCaps.currentExtent.width == 0xFFFFFFFF {
-        swapchainExtent = { width = cast(u32)window_size_x, height = cast(u32)window_size_y };
+        swapchainExtent = { width = cast(u32)windowSizeX, height = cast(u32)windowSizeY };
     }
 
     imageFormat : vk.Format : .B8G8R8A8_SRGB;
@@ -296,7 +296,7 @@ main :: proc() {
         sType = .IMAGE_CREATE_INFO,
         imageType = .D2,
         format = depthFormat,
-        extent = { width = cast(u32)window_size_x, height = cast(u32)window_size_y, depth = 1 },
+        extent = { width = cast(u32)windowSizeX, height = cast(u32)windowSizeY, depth = 1 },
         mipLevels = 1,
         arrayLayers = 1,
         samples = { ._1 },
@@ -332,13 +332,13 @@ main :: proc() {
 
     //=== Loading meshes ======================================================
 
-    suzanne_buf, err := os.read_entire_file_from_path("assets/suzanne.obj", context.allocator);
+    suzanneBuf, err := os.read_entire_file_from_path("assets/suzanne.obj", context.allocator);
     if err != nil {
         fmt.eprintln("Failed to read assets/suzanne.obj:", err)
         os.exit(1);
     }
 
-    result := tinyobj.parse_obj(string(suzanne_buf), "", tinyobj.FLAG_TRIANGULATE);
+    result := tinyobj.parse_obj(string(suzanneBuf), "", tinyobj.FLAG_TRIANGULATE);
     if !result.success {
         fmt.println("Failed to parse OBJ")
         return
@@ -352,19 +352,19 @@ main :: proc() {
     }
 
     shape := result.shapes[0]
-    face_start := shape.face_offset * 3
-    face_end   := face_start + shape.length * 3
-    shape_indices := result.attrib.faces[face_start:face_end]
+    faceStart := shape.face_offset * 3
+    faceEnd   := faceStart + shape.length * 3
+    shapeIndices := result.attrib.faces[faceStart:faceEnd]
 
-    if len(shape_indices) > int(max(u16)) + 1 {
-        fmt.eprintln("Mesh has too many indices for u16:", len(shape_indices))
+    if len(shapeIndices) > int(max(u16)) + 1 {
+        fmt.eprintln("Mesh has too many indices for u16:", len(shapeIndices))
         os.exit(1);
     }
 
     vertices: [dynamic]Vertex
     indices:  [dynamic]u16
 
-    for &index in shape_indices {
+    for &index in shapeIndices {
         v := Vertex {
             pos = {
                 result.attrib.vertices[index.v_idx * 3],
@@ -385,7 +385,7 @@ main :: proc() {
         append(&indices, u16(len(indices)))
     }
 
-    indexCount : vk.DeviceSize = vk.DeviceSize(len(shape_indices))
+    indexCount : vk.DeviceSize = vk.DeviceSize(len(shapeIndices))
 
     vBufSize := vk.DeviceSize(size_of(Vertex) * len(vertices));
     iBufSize := vk.DeviceSize(size_of(u16) * len(indices));
@@ -495,7 +495,7 @@ main :: proc() {
     commandPoolCI := vk.CommandPoolCreateInfo {
         sType = .COMMAND_POOL_CREATE_INFO,
         flags = { .RESET_COMMAND_BUFFER },
-        queueFamilyIndex = queue_family,
+        queueFamilyIndex = queueFamily,
     };
     commandPool: vk.CommandPool;
     chk(vk.CreateCommandPool(device, &commandPoolCI, nil, &commandPool));
@@ -521,7 +521,7 @@ main :: proc() {
         }
     }
     queue: vk.Queue;
-    vk.GetDeviceQueue(device, queue_family, 0, &queue)
+    vk.GetDeviceQueue(device, queueFamily, 0, &queue)
 
     descriptorPool:         vk.DescriptorPool
     descriptorSetLayoutTex: vk.DescriptorSetLayout
@@ -966,7 +966,7 @@ main :: proc() {
 
         //=== Update shader data ==============================================
 
-        shaderData.projection = glm.mat4Perspective(glm.radians_f32(45.0), f32(window_size_x) / f32(window_size_y), 0.1, 32.0);
+        shaderData.projection = glm.mat4Perspective(glm.radians_f32(45.0), f32(windowSizeX) / f32(windowSizeY), 0.1, 32.0);
         shaderData.view = glm.mat4Translate(camPos);
         for i := 0; i < 3; i += 1 {
             instancePos := glm.vec3{ f32(i - 1) * 3.0, 0.0, 0.0 };
@@ -1027,16 +1027,16 @@ main :: proc() {
         };
         renderingInfo := vk.RenderingInfo {
             sType = .RENDERING_INFO,
-            renderArea = { extent = { width = u32(window_size_x), height = u32(window_size_y) } },
+            renderArea = { extent = { width = u32(windowSizeX), height = u32(windowSizeY) } },
             layerCount = 1,
             colorAttachmentCount = 1,
             pColorAttachments = &colorAttachmentInfo,
             pDepthAttachment = &depthAttachmentInfo,
         };
         vk.CmdBeginRendering(cb, &renderingInfo);
-        vp := vk.Viewport{ width = f32(window_size_x), height = f32(window_size_y), minDepth = 0.0, maxDepth = 1.0 };
+        vp := vk.Viewport{ width = f32(windowSizeX), height = f32(windowSizeY), minDepth = 0.0, maxDepth = 1.0 };
         vk.CmdSetViewport(cb, 0, 1, &vp);
-        scissor := vk.Rect2D{ extent = { width = u32(window_size_x), height = u32(window_size_y) } };
+        scissor := vk.Rect2D{ extent = { width = u32(windowSizeX), height = u32(windowSizeY) } };
         vk.CmdBindPipeline(cb, .GRAPHICS, pipeline);
         vk.CmdSetScissor(cb, 0, 1, &scissor);
         vk.CmdBindDescriptorSets(cb, .GRAPHICS, pipelineLayout, 0, 1, &descriptorSetTex, 0, nil);
@@ -1140,13 +1140,13 @@ main :: proc() {
         if updateSwapchain {
             w_size, h_size: i32;
             sdl.GetWindowSize(window, &w_size, &h_size);
-            window_size_x = int(w_size);
-            window_size_y = int(h_size);
+            windowSizeX = int(w_size);
+            windowSizeY = int(h_size);
             updateSwapchain = false;
             chk(vk.DeviceWaitIdle(device));
             chk(vk.GetPhysicalDeviceSurfaceCapabilitiesKHR(devices[device_index], surface, &surfaceCaps));
             swapchainCI.oldSwapchain = swapchain;
-            swapchainCI.imageExtent = { width = u32(window_size_x), height = u32(window_size_y) };
+            swapchainCI.imageExtent = { width = u32(windowSizeX), height = u32(windowSizeY) };
             chk(vk.CreateSwapchainKHR(device, &swapchainCI, nil, &swapchain));
             for i in 0 ..< imageCount {
                 vk.DestroyImageView(device, swapchainImageViews[i], nil)
@@ -1177,7 +1177,7 @@ main :: proc() {
             vk.DestroySwapchainKHR(device, swapchainCI.oldSwapchain, nil);
             vma.DestroyImage(allocator, depthImage, depthImageAllocation);
             vk.DestroyImageView(device, depthImageView, nil);
-            depthImageCI.extent = { width = u32(window_size_x), height = u32(window_size_y), depth = 1 };
+            depthImageCI.extent = { width = u32(windowSizeX), height = u32(windowSizeY), depth = 1 };
             allocCI := vma.AllocationCreateInfo{ flags = { .DEDICATED_MEMORY }, usage = .AUTO };
             chk(vma.CreateImage(allocator, depthImageCI, allocCI, &depthImage, &depthImageAllocation, nil));
             viewCI := vk.ImageViewCreateInfo {
