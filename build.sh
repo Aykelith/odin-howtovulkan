@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
 odin build . \
     -debug \
-    -extra-linker-flags:"-L$(pwd)/external-libs/SDL -Wl,-rpath,$(pwd)/external-libs/SDL:$(pwd)/external-libs/slang/lib" \
+    -extra-linker-flags:"-L$(pwd)/external-libs/SDL/build -Wl,-rpath,$(pwd)/external-libs/SDL/build:$(pwd)/external-libs/slang/lib" \
     --collection:shared=./external-libs \
